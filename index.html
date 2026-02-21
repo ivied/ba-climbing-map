@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Скалодромы Buenos Aires</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  #map { width: 100%; height: 100vh; }
+  .info-panel {
+    position: absolute; top: 10px; right: 10px; z-index: 1000;
+    background: white; border-radius: 12px; padding: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15); max-width: 320px;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .info-panel h2 { font-size: 18px; margin-bottom: 8px; }
+  .info-panel p { font-size: 13px; color: #666; margin-bottom: 12px; }
+  .gym-list { list-style: none; }
+  .gym-list li {
+    padding: 10px 0; border-bottom: 1px solid #eee;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .gym-list li:hover { background: #f5f5f5; margin: 0 -16px; padding: 10px 16px; }
+  .gym-list li:last-child { border-bottom: none; }
+  .gym-name { font-weight: 700; font-size: 14px; color: #333; }
+  .gym-address { font-size: 12px; color: #888; margin-top: 2px; }
+  .gym-distance { font-size: 12px; color: #4CAF50; font-weight: 600; margin-top: 2px; }
+  .gym-schedule { font-size: 11px; color: #999; margin-top: 2px; }
+  .btn-locate {
+    width: 100%; padding: 10px; border: none; border-radius: 8px;
+    background: #2196F3; color: white; font-size: 14px; font-weight: 600;
+    cursor: pointer; margin-bottom: 12px;
+  }
+  .btn-locate:hover { background: #1976D2; }
+  .btn-locate:disabled { background: #ccc; cursor: default; }
+  .popup-content h3 { margin: 0 0 4px 0; font-size: 15px; }
+  .popup-content p { margin: 2px 0; font-size: 12px; color: #555; }
+  .popup-content .dist { color: #4CAF50; font-weight: 600; }
+  .popup-content a { color: #2196F3; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="info-panel">
+  <h2>🧗 Скалодромы BA</h2>
+  <p>Все indoor скалодромы Буэнос-Айреса</p>
+  <button class="btn-locate" id="locateBtn" onclick="locateUser()">📍 Моё местоположение</button>
+  <ul class="gym-list" id="gymList"></ul>
+</div>
+
+<script>
+const gyms = [
+  {
+    name: "Realization Escalada",
+    address: "Alm. F. J. Seguí 1952, Palermo",
+    lat: -34.5883, lng: -58.4350,
+    schedule: "Вт-Сб 10-22, Вс 15-22",
+    ig: "@realization_escalada",
+    url: "https://www.instagram.com/realization_escalada/",
+    features: "Мур + boulder + патио с пивом 🍺"
+  },
+  {
+    name: "Club RKM — All Boys Saavedra",
+    address: "Besares 3142, Saavedra",
+    lat: -34.5530, lng: -58.4897,
+    schedule: "Уточнять по тел.",
+    phone: "+54 11 4541-8338",
+    url: "https://www.facebook.com/clubrkm/",
+    features: "Первый клуб скалолазания BA (1996). Мур + boulder."
+  },
+  {
+    name: "Bien Alto Escuela de Montaña",
+    address: "Malabia 538, Villa Crespo",
+    lat: -34.5983, lng: -58.4279,
+    schedule: "Уточнять",
+    phone: "1531713103",
+    ig: "@bienaltoescuela",
+    features: "Мур вертикальный + boulder, курсы, выезды на скалы"
+  },
+  {
+    name: "Punto Cumbre",
+    address: "Jean Jaures 351, Balvanera",
+    lat: -34.6097, lng: -58.4126,
+    schedule: "Сб свободное лазание 16-20",
+    ig: "@punto_cumbre",
+    features: "Все уровни, курсы, мур libre"
+  },
+  {
+    name: "V_Once Escalada",
+    address: "Gral. Urquiza 124, Once",
+    lat: -34.6050, lng: -58.4070,
+    schedule: "См. Instagram",
+    ig: "@v_once_escalada",
+    features: "Boulder + cuerda, кафетерия, day pass"
+  },
+  {
+    name: "Rustik",
+    address: "Pje. Rufino 3086, Caballito",
+    lat: -34.6170, lng: -58.4350,
+    schedule: "Пн,Вт,Чт,Сб 17-22 / Ср,Пт 10-13 и 17-22",
+    ig: "@escaladarustik",
+    features: "Boulder + школа, курсы для детей"
+  },
+  {
+    name: "Estación Vertical",
+    address: "Av. San Martín 2665, Florida, Vte. López",
+    lat: -34.5280, lng: -58.4960,
+    schedule: "См. Instagram",
+    ig: "@estacionvertical",
+    url: "https://www.estacionvertical.com.ar/",
+    features: "250 м² boulder, free practice, дети 4-15"
+  },
+  {
+    name: "Ahonikenk",
+    address: "M. Porcel de Peralta 1458, Villa Real",
+    lat: -34.6189, lng: -58.5109,
+    schedule: "Пн-Чт 17-19, Сб 9-12:30 и 15-20",
+    phone: "15-5139-6458",
+    features: "9м высота, 15+ маршрутов, 4 нависания, outdoor"
+  },
+  {
+    name: "Golem Escalada",
+    address: "Brandsen 2255, Avellaneda",
+    lat: -34.6620, lng: -58.3660,
+    schedule: "Пн-Пт 18-22, Сб 14-16:30",
+    ig: "@golem_escalada",
+    features: "Boulder + top-rope, крытые и открытые секции"
+  }
+];
+
+// Init map centered on Buenos Aires
+const map = L.map('map').setView([-34.58, -58.44], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+
+const climbIcon = L.divIcon({
+  html: '🧗',
+  className: 'climb-marker',
+  iconSize: [30, 30],
+  iconAnchor: [15, 15]
+});
+
+let userMarker = null;
+let userPos = null;
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+function updateDistances() {
+  gyms.forEach(g => {
+    g.distance = userPos ? haversine(userPos.lat, userPos.lng, g.lat, g.lng) : null;
+  });
+  gyms.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+  renderList();
+}
+
+function renderList() {
+  const list = document.getElementById('gymList');
+  list.innerHTML = gyms.map((g, i) => `
+    <li onclick="flyTo(${g.lat}, ${g.lng}, '${g.name.replace(/'/g, "\\'")}')">
+      <div class="gym-name">${g.name}</div>
+      <div class="gym-address">📍 ${g.address}</div>
+      ${g.distance ? `<div class="gym-distance">📏 ${g.distance.toFixed(1)} км</div>` : ''}
+      <div class="gym-schedule">🕐 ${g.schedule}</div>
+    </li>
+  `).join('');
+}
+
+function flyTo(lat, lng, name) {
+  map.flyTo([lat, lng], 15);
+  gyms.find(g => g.name === name)?._marker?.openPopup();
+}
+
+// Add markers
+gyms.forEach(g => {
+  const popup = `<div class="popup-content">
+    <h3>${g.name}</h3>
+    <p>📍 ${g.address}</p>
+    <p>🕐 ${g.schedule}</p>
+    <p>${g.features}</p>
+    ${g.distance ? `<p class="dist">📏 ${g.distance.toFixed(1)} км от вас</p>` : ''}
+    ${g.ig ? `<p><a href="https://instagram.com/${g.ig.replace('@','')}" target="_blank">Instagram ${g.ig}</a></p>` : ''}
+    ${g.url ? `<p><a href="${g.url}" target="_blank">Сайт</a></p>` : ''}
+    ${g.phone ? `<p>📞 ${g.phone}</p>` : ''}
+    <p><a href="https://www.google.com/maps/dir/?api=1&destination=${g.lat},${g.lng}" target="_blank">🗺 Маршрут в Google Maps</a></p>
+  </div>`;
+  g._marker = L.marker([g.lat, g.lng], {icon: climbIcon}).addTo(map).bindPopup(popup);
+});
+
+function locateUser() {
+  const btn = document.getElementById('locateBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Определяю...';
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        if (userMarker) map.removeLayer(userMarker);
+        userMarker = L.marker([userPos.lat, userPos.lng], {
+          icon: L.divIcon({ html: '📍', className: '', iconSize: [24, 24], iconAnchor: [12, 12] })
+        }).addTo(map).bindPopup('Вы здесь').openPopup();
+        map.flyTo([userPos.lat, userPos.lng], 13);
+        updateDistances();
+        // Update popups with distances
+        gyms.forEach(g => {
+          const popup = `<div class="popup-content">
+            <h3>${g.name}</h3>
+            <p>📍 ${g.address}</p>
+            <p>🕐 ${g.schedule}</p>
+            <p>${g.features}</p>
+            <p class="dist">📏 ${g.distance.toFixed(1)} км от вас</p>
+            ${g.ig ? `<p><a href="https://instagram.com/${g.ig.replace('@','')}" target="_blank">Instagram ${g.ig}</a></p>` : ''}
+            ${g.url ? `<p><a href="${g.url}" target="_blank">Сайт</a></p>` : ''}
+            ${g.phone ? `<p>📞 ${g.phone}</p>` : ''}
+            <p><a href="https://www.google.com/maps/dir/?api=1&destination=${g.lat},${g.lng}" target="_blank">🗺 Маршрут в Google Maps</a></p>
+          </div>`;
+          g._marker.setPopupContent(popup);
+        });
+        btn.textContent = '✅ Местоположение определено';
+        setTimeout(() => { btn.textContent = '📍 Обновить местоположение'; btn.disabled = false; }, 2000);
+      },
+      err => {
+        btn.textContent = '❌ Не удалось определить';
+        btn.disabled = false;
+        setTimeout(() => { btn.textContent = '📍 Моё местоположение'; }, 2000);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+}
+
+renderList();
+</script>
+</body>
+</html>
