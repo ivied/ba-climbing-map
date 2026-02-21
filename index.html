@@ -13,10 +13,11 @@
   .info-panel {
     position: absolute; top: 10px; right: 10px; z-index: 1000;
     background: white; border-radius: 12px; padding: 16px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15); max-width: 320px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15); max-width: 340px;
     max-height: 90vh; overflow-y: auto;
   }
-  .info-panel h2 { font-size: 18px; margin-bottom: 8px; }
+  .info-panel h2 { font-size: 18px; margin-bottom: 4px; }
+  .info-panel .subtitle { font-size: 12px; color: #999; margin-bottom: 8px; }
   .info-panel p { font-size: 13px; color: #666; margin-bottom: 12px; }
   .gym-list { list-style: none; }
   .gym-list li {
@@ -29,6 +30,10 @@
   .gym-address { font-size: 12px; color: #888; margin-top: 2px; }
   .gym-distance { font-size: 12px; color: #4CAF50; font-weight: 600; margin-top: 2px; }
   .gym-schedule { font-size: 11px; color: #999; margin-top: 2px; }
+  .gym-tag { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-top: 4px; margin-right: 4px; }
+  .tag-caba { background: #E3F2FD; color: #1565C0; }
+  .tag-gba { background: #FFF3E0; color: #E65100; }
+  .tag-new { background: #E8F5E9; color: #2E7D32; }
   .btn-locate {
     width: 100%; padding: 10px; border: none; border-radius: 8px;
     background: #2196F3; color: white; font-size: 14px; font-weight: 600;
@@ -51,6 +56,12 @@
   .popup-content p { margin: 2px 0; font-size: 12px; color: #555; }
   .popup-content .dist { color: #4CAF50; font-weight: 600; }
   .popup-content a { color: #2196F3; text-decoration: none; }
+  .filter-row { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .filter-btn {
+    padding: 4px 10px; border: 1px solid #ddd; border-radius: 6px;
+    background: white; font-size: 11px; cursor: pointer; transition: all 0.2s;
+  }
+  .filter-btn.active { background: #2196F3; color: white; border-color: #2196F3; }
 </style>
 </head>
 <body>
@@ -59,7 +70,13 @@
 
 <div class="info-panel">
   <h2>🧗 Скалодромы BA</h2>
-  <p>Все indoor скалодромы Буэнос-Айреса</p>
+  <div class="subtitle">16 проверенных локаций · обновлено 21.02.2026</div>
+  <p>Все indoor скалодромы Буэнос-Айреса и пригородов</p>
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="filterGyms('all')">Все (16)</button>
+    <button class="filter-btn" onclick="filterGyms('caba')">CABA</button>
+    <button class="filter-btn" onclick="filterGyms('gba')">GBA</button>
+  </div>
   <button class="btn-locate" id="locateBtn" onclick="locateUser()">📍 Моё местоположение</button>
   <ul class="gym-list" id="gymList"></ul>
 </div>
@@ -68,84 +85,185 @@
 const gyms = [
   {
     name: "Realization Escalada",
-    address: "Alm. F. J. Seguí 1952, Palermo",
-    lat: -34.5883, lng: -58.4350,
-    schedule: "Вт-Сб 10-22, Вс 15-22",
-    ig: "@realization_escalada",
-    url: "https://www.instagram.com/realization_escalada/",
-    features: "Мур + boulder + патио с пивом 🍺"
+    address: "Almte. F. J. Seguí 1952, V. Gral. Mitre",
+    lat: -34.6044, lng: -58.4628,
+    schedule: "Mar-Sáb 10-22, Dom 15-22",
+    ig: "@realizationescalada",
+    url: "https://www.realizationescalada.com/",
+    phone: "+54 11 6094-8234",
+    features: "Boulder + muro, clases, escalada libre, patio cervecero 🍺",
+    zone: "caba"
   },
   {
     name: "Club RKM — All Boys Saavedra",
     address: "Besares 3142, Saavedra",
-    lat: -34.5530, lng: -58.4897,
-    schedule: "Уточнять по тел.",
+    lat: -34.5481, lng: -58.4778,
+    schedule: "Consultar por tel/Facebook",
     phone: "+54 11 4541-8338",
     url: "https://www.facebook.com/clubrkm/",
-    features: "Первый клуб скалолазания BA (1996). Мур + boulder."
+    features: "Primer club de escalada BA (1996). Muro + boulder. Sin fines de lucro.",
+    zone: "caba"
   },
   {
     name: "Bien Alto Escuela de Montaña",
     address: "Malabia 538, Villa Crespo",
-    lat: -34.5983, lng: -58.4279,
-    schedule: "Уточнять",
-    phone: "1531713103",
+    lat: -34.5979, lng: -58.4382,
+    schedule: "Consultar WhatsApp/web",
+    phone: "15-3171-3103",
     ig: "@bienaltoescuela",
-    features: "Мур вертикальный + boulder, курсы, выезды на скалы"
+    url: "https://bienaltoescuelademontana.com/",
+    features: "Muro vertical + aplomado, cursos, escuelita, salidas a roca",
+    zone: "caba"
   },
   {
-    name: "Punto Cumbre",
+    name: "Punto Cumbre / En Punto",
     address: "Jean Jaures 351, Balvanera",
-    lat: -34.6097, lng: -58.4126,
-    schedule: "Сб свободное лазание 16-20",
+    lat: -34.6001, lng: -58.4074,
+    schedule: "Sáb libre 16-20. Ver IG",
     ig: "@punto_cumbre",
-    features: "Все уровни, курсы, мур libre"
+    phone: "+54 9 11 3195-7018",
+    features: "Todos los niveles, cursos, escuelita, muro libre, acrobacia",
+    zone: "caba"
   },
   {
-    name: "V_Once Escalada",
+    name: "En Punto (sede Riobamba)",
+    address: "Riobamba 165, Balvanera",
+    lat: -34.6076, lng: -58.3933,
+    schedule: "Lun-Vie 16-22, Mar-Jue 9-14, Sáb 10-20",
+    ig: "@escaloenpunto",
+    url: "https://escaloenpunto.com/",
+    phone: "+54 11 4162-0521",
+    features: "Escalada deportiva, cursos de iniciación, boulder",
+    zone: "caba",
+    isNew: true
+  },
+  {
+    name: "V_Once / V11 Escalada",
     address: "Gral. Urquiza 124, Once",
-    lat: -34.6050, lng: -58.4070,
-    schedule: "См. Instagram",
+    lat: -34.6119, lng: -58.4101,
+    schedule: "Ver Instagram / web",
     ig: "@v_once_escalada",
-    features: "Boulder + cuerda, кафетерия, day pass"
+    url: "https://v11escalada.com/",
+    features: "Boulder + cuerda, coworking, cafetería, day pass 🏗️",
+    zone: "caba"
   },
   {
-    name: "Rustik",
-    address: "Pje. Rufino 3086, Caballito",
-    lat: -34.6170, lng: -58.4350,
-    schedule: "Пн,Вт,Чт,Сб 17-22 / Ср,Пт 10-13 и 17-22",
+    name: "Escalada Rustik",
+    address: "Pje. Rufino 3086, Villa Urquiza",
+    lat: -34.5701, lng: -58.4927,
+    schedule: "Lu,Ma,Ju,Sá 17-22 / Mi,Vi 10-13 y 17-22",
     ig: "@escaladarustik",
-    features: "Boulder + школа, курсы для детей"
+    url: "https://escaladarustik.com.ar",
+    phone: "+54 11 6035-4276",
+    features: "Boulder + escuela, cursos para niños 6-13 años",
+    zone: "caba"
+  },
+  {
+    name: "CABA Boulder Bucarelli",
+    address: "Bucarelli 1247, Parque Chas",
+    lat: -34.5871, lng: -58.4783,
+    schedule: "Lun-Vie 17-22, Sáb 17-20:30",
+    ig: "@caba.bucarelli",
+    url: "https://www.caba.org.ar/boulder/parque-chas/ubicacion-y-horarios",
+    features: "Boulder grande, clases adultos/intermedios, escuelita. Centro Andino BA 🏔️",
+    zone: "caba",
+    isNew: true
+  },
+  {
+    name: "CABA Palestra CeNARD",
+    address: "Crisólogo Larralde 1050, Núñez (CeNARD)",
+    lat: -34.5440, lng: -58.4548,
+    schedule: "Lun-Vie 17-22, Sáb 17-20:30",
+    ig: "@centroandinobuenosaires",
+    url: "https://www.caba.org.ar/palestra/ubicacion",
+    phone: "011-4381-1566",
+    features: "Palestra Nacional ~2400m², la más grande de Sudamérica. Concreto y roca 🏛️",
+    zone: "caba",
+    isNew: true
+  },
+  {
+    name: "CABA Boulder Centro",
+    address: "Rivadavia 1253, San Nicolás",
+    lat: -34.6086, lng: -58.3843,
+    schedule: "Consultar web CABA",
+    ig: "@centroandinobuenosaires",
+    url: "https://www.caba.org.ar/",
+    features: "Boulder + sede administrativa Centro Andino BA",
+    zone: "caba",
+    isNew: true
+  },
+  {
+    name: "Ahonikenk — Club Triglav",
+    address: "M. Porcel de Peralta 1458, Villa Real",
+    lat: -34.6219, lng: -58.5294,
+    schedule: "Lun-Jue 17-19, Sáb 9-12:30 y 15-20",
+    ig: "@ahonikenknr",
+    url: "http://ahonikenknr.blogspot.com/",
+    phone: "15-5139-6458",
+    features: "9m altura, 15+ rutas, 4 nivisamientos, cubo, techo 3m, outdoor",
+    zone: "caba"
   },
   {
     name: "Estación Vertical",
     address: "Av. San Martín 2665, Florida, Vte. López",
-    lat: -34.5280, lng: -58.4960,
-    schedule: "См. Instagram",
+    lat: -34.5307, lng: -58.4977,
+    schedule: "Ver Instagram @estacionvertical",
     ig: "@estacionvertical",
     url: "https://www.estacionvertical.com.ar/",
-    features: "250 м² boulder, free practice, дети 4-15"
+    features: "Boulder más grande de Argentina (250m²+), escalada, cursos, niños 4-15 🏆",
+    zone: "gba"
   },
   {
-    name: "Ahonikenk",
-    address: "M. Porcel de Peralta 1458, Villa Real",
-    lat: -34.6189, lng: -58.5109,
-    schedule: "Пн-Чт 17-19, Сб 9-12:30 и 15-20",
-    phone: "15-5139-6458",
-    features: "9м высота, 15+ маршрутов, 4 нависания, outdoor"
+    name: "Campus — Tierra de Escalada",
+    address: "Av. Libertador 981, Vicente López",
+    lat: -34.5251, lng: -58.4720,
+    schedule: "Lun-Vie 17-22, Sáb-Dom 15-20",
+    ig: "@campusescalada",
+    url: "https://www.campusescalada.com.ar/",
+    phone: "4504-1874",
+    features: "Muro 13m, 500m² escalable, 14 descuelgues. Boulder 400m² con techo 10m 🧱",
+    zone: "gba",
+    isNew: true
+  },
+  {
+    name: "AADED Escalando",
+    address: "Elcano 794, Acassuso, San Isidro",
+    lat: -34.4715, lng: -58.4926,
+    schedule: "Lun-Vie 15-21, Sáb-Dom-Fer 14-18:30",
+    ig: "@escalando_peru_beach",
+    url: "http://www.escalando.com.ar/",
+    phone: "+54 11 4798-2759",
+    features: "Primera escuela de escalada de Argentina. Muro más alto del país, outdoor junto al río 🌊",
+    zone: "gba",
+    isNew: true
   },
   {
     name: "Golem Escalada",
-    address: "Brandsen 2255, Avellaneda",
-    lat: -34.6620, lng: -58.3660,
-    schedule: "Пн-Пт 18-22, Сб 14-16:30",
+    address: "Cnel. Brandsen 2255, Avellaneda",
+    lat: -34.6767, lng: -58.3542,
+    schedule: "Lun-Vie 18-22, Sáb 14-18:30",
     ig: "@golem_escalada",
-    features: "Boulder + top-rope, крытые и открытые секции"
+    url: "https://www.facebook.com/GolemEscalada/",
+    phone: "+54 11 6901-7354",
+    features: "Muro indoor + boulder, vías, campus board, fisuras. Cursos alpina/rescate.",
+    zone: "gba"
+  },
+  {
+    name: "El Muro Escalada",
+    address: "Viamonte 160, Ramos Mejía",
+    lat: -34.6442, lng: -58.5583,
+    schedule: "Lun-Vie 17-22, Sáb 10-21, Dom 9-15",
+    ig: "@elmuroderamos",
+    url: "http://www.elmuroescalada.com.ar/",
+    phone: "+54 11 4464-2560",
+    features: "Escuela de escalada, niños y adultos. Boulder + vías.",
+    zone: "gba",
+    isNew: true
   }
 ];
 
 // Init map centered on Buenos Aires
-const map = L.map('map').setView([-34.58, -58.44], 12);
+const map = L.map('map').setView([-34.59, -58.45], 12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap'
 }).addTo(map);
@@ -159,6 +277,7 @@ const climbIcon = L.divIcon({
 
 let userMarker = null;
 let userPos = null;
+let activeFilter = 'all';
 
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -168,22 +287,45 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.asin(Math.sqrt(a));
 }
 
+function getFilteredGyms() {
+  if (activeFilter === 'all') return gyms;
+  return gyms.filter(g => g.zone === activeFilter);
+}
+
+function filterGyms(filter) {
+  activeFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  updateDistances();
+  // Show/hide markers
+  gyms.forEach(g => {
+    if (filter === 'all' || g.zone === filter) {
+      g._marker.addTo(map);
+    } else {
+      map.removeLayer(g._marker);
+    }
+  });
+}
+
 function updateDistances() {
   gyms.forEach(g => {
     g.distance = userPos ? haversine(userPos.lat, userPos.lng, g.lat, g.lng) : null;
   });
-  gyms.sort((a, b) => (a.distance || 999) - (b.distance || 999));
   renderList();
 }
 
 function renderList() {
+  const filtered = getFilteredGyms();
+  const sorted = [...filtered].sort((a, b) => (a.distance || 999) - (b.distance || 999));
   const list = document.getElementById('gymList');
-  list.innerHTML = gyms.map((g, i) => `
+  list.innerHTML = sorted.map(g => `
     <li onclick="flyTo(${g.lat}, ${g.lng}, '${g.name.replace(/'/g, "\\'")}')">
       <div class="gym-name">${g.name}</div>
       <div class="gym-address">📍 ${g.address}</div>
       ${g.distance ? `<div class="gym-distance">📏 ${g.distance.toFixed(1)} км</div>` : ''}
       <div class="gym-schedule">🕐 ${g.schedule}</div>
+      <span class="gym-tag ${g.zone === 'caba' ? 'tag-caba' : 'tag-gba'}">${g.zone === 'caba' ? 'CABA' : 'GBA'}</span>
+      ${g.isNew ? '<span class="gym-tag tag-new">NUEVO</span>' : ''}
     </li>
   `).join('');
 }
@@ -193,9 +335,8 @@ function flyTo(lat, lng, name) {
   gyms.find(g => g.name === name)?._marker?.openPopup();
 }
 
-// Add markers
-gyms.forEach(g => {
-  const popup = `<div class="popup-content">
+function makePopup(g) {
+  return `<div class="popup-content">
     <h3>${g.name}</h3>
     <p>📍 ${g.address}</p>
     <p>🕐 ${g.schedule}</p>
@@ -206,7 +347,11 @@ gyms.forEach(g => {
     ${g.phone ? `<p>📞 ${g.phone}</p>` : ''}
     <p><a href="https://www.google.com/maps/dir/?api=1&destination=${g.lat},${g.lng}" target="_blank">🗺 Маршрут в Google Maps</a></p>
   </div>`;
-  g._marker = L.marker([g.lat, g.lng], {icon: climbIcon}).addTo(map).bindPopup(popup);
+}
+
+// Add markers
+gyms.forEach(g => {
+  g._marker = L.marker([g.lat, g.lng], {icon: climbIcon}).addTo(map).bindPopup(makePopup(g));
 });
 
 function locateUser() {
@@ -225,20 +370,7 @@ function locateUser() {
         map.flyTo([userPos.lat, userPos.lng], 13);
         updateDistances();
         // Update popups with distances
-        gyms.forEach(g => {
-          const popup = `<div class="popup-content">
-            <h3>${g.name}</h3>
-            <p>📍 ${g.address}</p>
-            <p>🕐 ${g.schedule}</p>
-            <p>${g.features}</p>
-            <p class="dist">📏 ${g.distance.toFixed(1)} км от вас</p>
-            ${g.ig ? `<p><a href="https://instagram.com/${g.ig.replace('@','')}" target="_blank">Instagram ${g.ig}</a></p>` : ''}
-            ${g.url ? `<p><a href="${g.url}" target="_blank">Сайт</a></p>` : ''}
-            ${g.phone ? `<p>📞 ${g.phone}</p>` : ''}
-            <p><a href="https://www.google.com/maps/dir/?api=1&destination=${g.lat},${g.lng}" target="_blank">🗺 Маршрут в Google Maps</a></p>
-          </div>`;
-          g._marker.setPopupContent(popup);
-        });
+        gyms.forEach(g => g._marker.setPopupContent(makePopup(g)));
         btn.textContent = '✅ Местоположение определено';
         setTimeout(() => { btn.textContent = '📍 Обновить местоположение'; btn.disabled = false; }, 2000);
       },
