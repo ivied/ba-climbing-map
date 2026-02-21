@@ -56,6 +56,33 @@
   .popup-content p { margin: 2px 0; font-size: 12px; color: #555; }
   .popup-content .dist { color: #4CAF50; font-weight: 600; }
   .popup-content a { color: #2196F3; text-decoration: none; }
+  .search-row {
+    display: flex; gap: 6px; margin-bottom: 6px;
+  }
+  .search-row input {
+    flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px;
+    font-size: 13px; outline: none;
+  }
+  .search-row input:focus { border-color: #2196F3; }
+  .btn-search {
+    padding: 8px 12px; border: none; border-radius: 8px;
+    background: #FF9800; color: white; font-size: 14px; cursor: pointer;
+  }
+  .btn-search:hover { background: #F57C00; }
+  .click-hint {
+    font-size: 11px; color: #999; margin-bottom: 10px; text-align: center;
+  }
+  .custom-marker-pin {
+    background: #FF9800;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 0 2px #FF9800;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    line-height: 1;
+  }
   .filter-row { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
   .filter-btn {
     padding: 4px 10px; border: 1px solid #ddd; border-radius: 6px;
@@ -78,6 +105,11 @@
     <button class="filter-btn" onclick="filterGyms('gba')">GBA</button>
   </div>
   <button class="btn-locate" id="locateBtn" onclick="locateUser()">📍 Моё местоположение</button>
+  <div class="search-row">
+    <input type="text" id="addressInput" placeholder="Адрес или координаты (-34.60, -58.43)" />
+    <button class="btn-search" onclick="searchAddress()">🔍</button>
+  </div>
+  <div class="click-hint" id="clickHint">💡 Или кликни по карте чтобы выбрать точку</div>
   <ul class="gym-list" id="gymList"></ul>
 </div>
 
@@ -383,6 +415,80 @@ function locateUser() {
     );
   }
 }
+
+// --- Custom point: click on map ---
+const customIcon = L.divIcon({
+  html: '📌',
+  className: 'custom-marker-pin',
+  iconSize: [36, 36],
+  iconAnchor: [18, 18]
+});
+
+function setCustomPoint(lat, lng, label) {
+  userPos = { lat, lng };
+  if (userMarker) map.removeLayer(userMarker);
+  userMarker = L.marker([lat, lng], { icon: customIcon })
+    .addTo(map)
+    .bindPopup(label || `📌 ${lat.toFixed(4)}, ${lng.toFixed(4)}`)
+    .openPopup();
+  updateDistances();
+  gyms.forEach(g => g._marker.setPopupContent(makePopup(g)));
+  document.getElementById('locateBtn').textContent = '📍 Обновить местоположение';
+  document.getElementById('locateBtn').disabled = false;
+}
+
+map.on('click', function(e) {
+  setCustomPoint(e.latlng.lat, e.latlng.lng, `📌 Выбранная точка (${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)})`);
+  document.getElementById('addressInput').value = `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+});
+
+// --- Search by address or coordinates ---
+function searchAddress() {
+  const input = document.getElementById('addressInput').value.trim();
+  if (!input) return;
+
+  // Try parsing as coordinates first: "-34.60, -58.43" or "-34.60 -58.43"
+  const coordMatch = input.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+  if (coordMatch) {
+    const lat = parseFloat(coordMatch[1]);
+    const lng = parseFloat(coordMatch[2]);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      map.flyTo([lat, lng], 14);
+      setCustomPoint(lat, lng, `📌 ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+      return;
+    }
+  }
+
+  // Geocode via Nominatim
+  const btn = document.querySelector('.btn-search');
+  btn.textContent = '⏳';
+  btn.disabled = true;
+
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input + ', Buenos Aires, Argentina')}&limit=1`)
+    .then(r => r.json())
+    .then(results => {
+      if (results.length > 0) {
+        const r = results[0];
+        const lat = parseFloat(r.lat);
+        const lng = parseFloat(r.lon);
+        map.flyTo([lat, lng], 14);
+        setCustomPoint(lat, lng, `📌 ${r.display_name.split(',').slice(0, 3).join(',')}`);
+        document.getElementById('addressInput').value = r.display_name.split(',').slice(0, 3).join(',').trim();
+      } else {
+        alert('Адрес не найден. Попробуй уточнить.');
+      }
+    })
+    .catch(() => alert('Ошибка поиска. Проверь интернет.'))
+    .finally(() => {
+      btn.textContent = '🔍';
+      btn.disabled = false;
+    });
+}
+
+// Enter key in search
+document.getElementById('addressInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') searchAddress();
+});
 
 renderList();
 </script>
